@@ -3,18 +3,18 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 abstract contract UniStakingTokensStorageUpgradeable is Initializable {
     using SafeMathUpgradeable for uint256;
-    using SafeERC20Upgradeable for IERC20Upgradeable;
+    using SafeERC20 for IERC20;
 
     uint256 private _rewardPool;
     uint256 private _rewardSupply;
     uint256 private _totalSupply;
-    IERC20Upgradeable private _rewardsToken;
-    IERC20Upgradeable private _stakingToken;
+    IERC20 private _rewardsToken;
+    IERC20 private _stakingToken;
     uint256 private _feePool;
     uint256 private _feeScheduleTimeScale;
     mapping(address => uint256) private _balances;
@@ -36,11 +36,11 @@ abstract contract UniStakingTokensStorageUpgradeable is Initializable {
         return _totalSupply;
     }
 
-    function rewardsToken() public view returns (IERC20Upgradeable) {
+    function rewardsToken() public view returns (IERC20) {
         return _rewardsToken;
     }
 
-    function stakingToken() public view returns (IERC20Upgradeable) {
+    function stakingToken() public view returns (IERC20) {
         return _stakingToken;
     }
 
@@ -98,7 +98,7 @@ abstract contract UniStakingTokensStorageUpgradeable is Initializable {
     }
 
     function __UniStakingTokensStorage_init(
-        IERC20Upgradeable rewardsToken_, IERC20Upgradeable stakingToken_, uint256 feeScheduleTimeScale_
+        IERC20 rewardsToken_, IERC20 stakingToken_, uint256 feeScheduleTimeScale_
     ) internal onlyInitializing {
         _rewardsToken = rewardsToken_;
         _stakingToken = stakingToken_;

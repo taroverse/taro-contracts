@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
@@ -11,7 +11,7 @@ import "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeab
 
 contract FixedAPYStaking is OwnableUpgradeable, PausableUpgradeable {
     using SafeMathUpgradeable for uint256;
-    using SafeERC20Upgradeable for IERC20Upgradeable;
+    using SafeERC20 for IERC20;
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.AddressSet;
 
     /**
@@ -85,7 +85,9 @@ contract FixedAPYStaking is OwnableUpgradeable, PausableUpgradeable {
 
     event StakingStopped(bool status, uint256 time);
 
-    constructor() {   
+    event StakedBalanceCapChanged(uint256 cap);
+
+    constructor() {
     }
 
     /**
@@ -112,6 +114,15 @@ contract FixedAPYStaking is OwnableUpgradeable, PausableUpgradeable {
         stakedBalanceCap = stakedBalanceCap_;
         require(rate_ != 0, "Zero interest rate");
         rate = rate_;
+
+        stakedBalance = 0;
+        rewardBalance = 0;
+        stakedTotal = 0;
+        totalReward = 0;
+        index = 0;
+        totalParticipants = 0;
+        isStopped = false;
+
         rates[index] = Rates(rate, block.timestamp);
     }
 
@@ -143,6 +154,7 @@ contract FixedAPYStaking is OwnableUpgradeable, PausableUpgradeable {
 
     function changeStakedBalanceCap(uint256 stakedBalanceCap_) external onlyOwner {
         stakedBalanceCap = stakedBalanceCap_;
+        emit StakedBalanceCapChanged(stakedBalanceCap_);
     }
 
     /**
@@ -337,21 +349,21 @@ contract FixedAPYStaking is OwnableUpgradeable, PausableUpgradeable {
         uint256 time;
         uint256 interest;
         uint256 _lockduration = deposits[from].endTime.sub(depositTime);
-        for (uint64 i = userIndex; i < index; i++) {
-            //loop runs till the latest index/interest rate change
-            if (endTime < rates[i + 1].timeStamp) {
-                //if the change occurs after the endTime loop breaks
-                break;
-            } else {
-                time = rates[i + 1].timeStamp.sub(depositTime);
-                interest = amount.mul(rates[i].newInterestRate).mul(time).div(
-                    _lockduration.mul(interestRateConverter)
-                );
-                amount = amount.add(interest);
-                depositTime = rates[i + 1].timeStamp;
-                userIndex++;
-            }
-        }
+        // for (uint64 i = userIndex; i < index; i++) {
+        //     //loop runs till the latest index/interest rate change
+        //     if (endTime < rates[i + 1].timeStamp) {
+        //         //if the change occurs after the endTime loop breaks
+        //         break;
+        //     } else {
+        //         time = rates[i + 1].timeStamp.sub(depositTime);
+        //         interest = amount.mul(rates[i].newInterestRate).mul(time).div(
+        //             _lockduration.mul(interestRateConverter)
+        //         );
+        //         amount = amount.add(interest);
+        //         depositTime = rates[i + 1].timeStamp;
+        //         userIndex++;
+        //     }
+        // }
 
         if (depositTime < endTime) {
             //final calculation for the remaining time period
@@ -375,13 +387,13 @@ contract FixedAPYStaking is OwnableUpgradeable, PausableUpgradeable {
         address receiver,
         uint256 amount
     ) private _hasAllowance(allower, amount) returns (bool) {
-        IERC20Upgradeable ERC20Interface = IERC20Upgradeable(tokenAddress);
+        IERC20 ERC20Interface = IERC20(tokenAddress);
         ERC20Interface.safeTransferFrom(allower, receiver, amount);
         return true;
     }
 
     function _payDirect(address to, uint256 amount) private returns (bool) {
-        IERC20Upgradeable ERC20Interface = IERC20Upgradeable(tokenAddress);
+        IERC20 ERC20Interface = IERC20(tokenAddress);
         ERC20Interface.safeTransfer(to, amount);
         return true;
     }
@@ -397,7 +409,7 @@ contract FixedAPYStaking is OwnableUpgradeable, PausableUpgradeable {
 
     modifier _hasAllowance(address allower, uint256 amount) {
         // Make sure the allower has provided the right allowance.
-        IERC20Upgradeable ERC20Interface = IERC20Upgradeable(tokenAddress);
+        IERC20 ERC20Interface = IERC20(tokenAddress);
         uint256 ourAllowance = ERC20Interface.allowance(allower, address(this));
         require(amount <= ourAllowance, "Make sure to add enough allowance");
         _;

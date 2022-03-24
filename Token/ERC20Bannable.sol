@@ -8,11 +8,15 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 abstract contract ERC20Bannable is ERC20, Ownable {
     mapping(address => bool) internal bannedAddresses;
 
+    event AddressBanned(address wallet);
+    event AddressUnbanned(address wallet);
+
     /**
      * Bans an address from transferring tokens in and out.
      */
     function banAddress(address wallet) public onlyOwner {
         bannedAddresses[wallet] = true;
+        emit AddressBanned(wallet);
     }
 
     /**
@@ -20,6 +24,7 @@ abstract contract ERC20Bannable is ERC20, Ownable {
      */
     function unbanAddress(address wallet) public onlyOwner {
         bannedAddresses[wallet] = false;
+        emit AddressUnbanned(wallet);
     }
 
     /**
