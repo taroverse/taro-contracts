@@ -3,8 +3,8 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts-upgradeable/utils/math/MathUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "../utils/AttoDecimal.sol";
 import "../utils/TwoStageOwnable.sol";
@@ -123,12 +123,15 @@ contract UniStaking is TwoStageOwnableUpgradeable, UniStakingTokensStorageUpgrad
     event Unstaked(address indexed account, uint256 amount);
     event ClaimedReward(address indexed account, uint256 amount);
 
+    event FeeCollectorChanged(address feeCollector);
+    event CollectedFeeTransferred(uint256 amount);
+
     constructor() {
     }
 
     function initialize(
-        IERC20Upgradeable rewardsToken_,
-        IERC20Upgradeable stakingToken_,
+        IERC20 rewardsToken_,
+        IERC20 stakingToken_,
         address owner_,
         uint256 unstakeUnlockingTime_,
         uint256 feeScheduleTimeScale_
@@ -196,10 +199,13 @@ contract UniStaking is TwoStageOwnableUpgradeable, UniStakingTokensStorageUpgrad
 
     function setFeeCollector(address feeCollector_) external onlyOwner {
         _feeCollector = feeCollector_;
+        emit FeeCollectorChanged(feeCollector_);
     }
 
     function transferCollectedFees() external onlyOwner {
+        uint256 amount = feePool();
         _transferCollectedFees(_feeCollector);
+        emit CollectedFeeTransferred(amount);
     }
 
     // function lockRewards() public {
