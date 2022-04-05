@@ -3,14 +3,14 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts-upgradeable/utils/math/MathUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "../utils/AttoDecimal.sol";
 import "../utils/TwoStageOwnable.sol";
 import "./UniStakingTokensStorage.sol";
 
-contract UniStaking is TwoStageOwnableUpgradeable, UniStakingTokensStorageUpgradeable, PausableUpgradeable {
+contract UniStaking is UUPSUpgradeable, TwoStageOwnableUpgradeable, UniStakingTokensStorageUpgradeable, PausableUpgradeable {
     using SafeMathUpgradeable for uint256;
     using AttoDecimalLib for AttoDecimal;
 
@@ -130,17 +130,23 @@ contract UniStaking is TwoStageOwnableUpgradeable, UniStakingTokensStorageUpgrad
     }
 
     function initialize(
-        IERC20 rewardsToken_,
-        IERC20 stakingToken_,
+        IERC20Upgradeable rewardsToken_,
+        IERC20Upgradeable stakingToken_,
         address owner_,
         uint256 unstakeUnlockingTime_,
         uint256 feeScheduleTimeScale_
     ) public virtual initializer {
-        __TwoStageOwnable_init_unchained(owner_);
+        __UUPSUpgradeable_init();
+        __TwoStageOwnable_init(owner_);
         __UniStakingTokensStorage_init(rewardsToken_, stakingToken_, feeScheduleTimeScale_);
-        __Pausable_init_unchained();
+        __Pausable_init();
         _unstakeUnlockingTime = unstakeUnlockingTime_;
     }
+
+    /**
+     * Only allow owner to upgrade.
+     */
+    function _authorizeUpgrade(address) internal override onlyOwner {}
 
     function stake(uint256 amount) public whenNotPaused onlyPositiveAmount(amount) {
         address sender = msg.sender;
