@@ -28,6 +28,13 @@ abstract contract ERC20Bannable is ERC20, Ownable {
     }
 
     /**
+     * Returns whether an address is banned.
+     */
+    function isAddressBanned(address wallet) public view returns (bool) {
+        return bannedAddresses[wallet];
+    }
+
+    /**
      * @dev See {ERC20-_beforeTokenTransfer}.
      *
      * Requirements:

@@ -3,18 +3,18 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 
 abstract contract UniStakingTokensStorageUpgradeable is Initializable {
     using SafeMathUpgradeable for uint256;
-    using SafeERC20 for IERC20;
+    using SafeERC20Upgradeable for IERC20Upgradeable;
 
     uint256 private _rewardPool;
     uint256 private _rewardSupply;
     uint256 private _totalSupply;
-    IERC20 private _rewardsToken;
-    IERC20 private _stakingToken;
+    IERC20Upgradeable private _rewardsToken;
+    IERC20Upgradeable private _stakingToken;
     uint256 private _feePool;
     uint256 private _feeScheduleTimeScale;
     mapping(address => uint256) private _balances;
@@ -36,11 +36,11 @@ abstract contract UniStakingTokensStorageUpgradeable is Initializable {
         return _totalSupply;
     }
 
-    function rewardsToken() public view returns (IERC20) {
+    function rewardsToken() public view returns (IERC20Upgradeable) {
         return _rewardsToken;
     }
 
-    function stakingToken() public view returns (IERC20) {
+    function stakingToken() public view returns (IERC20Upgradeable) {
         return _stakingToken;
     }
 
@@ -98,7 +98,7 @@ abstract contract UniStakingTokensStorageUpgradeable is Initializable {
     }
 
     function __UniStakingTokensStorage_init(
-        IERC20 rewardsToken_, IERC20 stakingToken_, uint256 feeScheduleTimeScale_
+        IERC20Upgradeable rewardsToken_, IERC20Upgradeable stakingToken_, uint256 feeScheduleTimeScale_
     ) internal onlyInitializing {
         _rewardsToken = rewardsToken_;
         _stakingToken = stakingToken_;
@@ -121,11 +121,6 @@ abstract contract UniStakingTokensStorageUpgradeable is Initializable {
 
         // weighted avg stake time = now - (now - prev weighted avg stake time) * prev balance / new balance
         _weightedAvgStakeTime[account] = block.timestamp.sub((block.timestamp.sub(weightedAvgStakeTime)).mul(prevBalance).div(_balances[account]));
-
-        // if(_unStakeUnlockingTime[account]==0 && privBalance==0)
-        // _unStakeUnlockingTime[account]= 1 days + block.timestamp;
-        // else
-        // _unStakeUnlockingTime[account] = (privBalance + amount)/(privBalance/_unStakeUnlockingTime[account] + amount/(block.timestamp+ 1 days));
 
         _onMint(account, amount);
     }
@@ -171,15 +166,6 @@ abstract contract UniStakingTokensStorageUpgradeable is Initializable {
         _rewardSupply = _rewardSupply.sub(amount);
         _claimed[account] = _claimed[account].add(amount);
     }
-
-    // function _transferBalance(
-    //     address from,
-    //     address to,
-    //     uint256 amount
-    // ) internal {
-    //     _balances[from] = _balances[from].sub(amount);
-    //     _balances[to] = _balances[to].add(amount);
-    // }
 
     function _transferCollectedFees(address collector) internal {
         _stakingToken.safeTransfer(collector, _feePool);

@@ -1,17 +1,18 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
 
-contract FixedAPYStaking is OwnableUpgradeable, PausableUpgradeable {
+contract FixedAPYStaking is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable {
     using SafeMathUpgradeable for uint256;
-    using SafeERC20 for IERC20;
+    using SafeERC20Upgradeable for IERC20Upgradeable;
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.AddressSet;
 
     /**
@@ -104,8 +105,9 @@ contract FixedAPYStaking is OwnableUpgradeable, PausableUpgradeable {
         uint256 lockDuration_,
         uint256 stakedBalanceCap_
     ) public virtual initializer {
-        __Ownable_init_unchained();
-        __Pausable_init_unchained();
+        __UUPSUpgradeable_init();
+        __Ownable_init();
+        __Pausable_init();
 
         name = name_;
         require(tokenAddress_ != address(0), "Zero token address");
@@ -125,6 +127,11 @@ contract FixedAPYStaking is OwnableUpgradeable, PausableUpgradeable {
 
         rates[index] = Rates(rate, block.timestamp);
     }
+
+    /**
+     * Only allow owner to upgrade.
+     */
+    function _authorizeUpgrade(address) internal override onlyOwner {}
 
     // cannot change rate and lock duration after constructor
     // /**
@@ -387,13 +394,13 @@ contract FixedAPYStaking is OwnableUpgradeable, PausableUpgradeable {
         address receiver,
         uint256 amount
     ) private _hasAllowance(allower, amount) returns (bool) {
-        IERC20 ERC20Interface = IERC20(tokenAddress);
+        IERC20Upgradeable ERC20Interface = IERC20Upgradeable(tokenAddress);
         ERC20Interface.safeTransferFrom(allower, receiver, amount);
         return true;
     }
 
     function _payDirect(address to, uint256 amount) private returns (bool) {
-        IERC20 ERC20Interface = IERC20(tokenAddress);
+        IERC20Upgradeable ERC20Interface = IERC20Upgradeable(tokenAddress);
         ERC20Interface.safeTransfer(to, amount);
         return true;
     }
@@ -409,7 +416,7 @@ contract FixedAPYStaking is OwnableUpgradeable, PausableUpgradeable {
 
     modifier _hasAllowance(address allower, uint256 amount) {
         // Make sure the allower has provided the right allowance.
-        IERC20 ERC20Interface = IERC20(tokenAddress);
+        IERC20Upgradeable ERC20Interface = IERC20Upgradeable(tokenAddress);
         uint256 ourAllowance = ERC20Interface.allowance(allower, address(this));
         require(amount <= ourAllowance, "Make sure to add enough allowance");
         _;
