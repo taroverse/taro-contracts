@@ -16,17 +16,21 @@ import "./TaroNFTStakingRewards.sol";
 import "hardhat/console.sol";
 
 /**
- *
- * Encoding of the set ID is:
- *   first 160 bits: staker address
- *   next 48 bits: current block number
- *   next 8 bits: current index of the passed in staking heroes
- *   next 32 bits: some hash
- *   last 8 bits: rarity of the staking hero
+ * Allows players to stake their Taro NFTs to earn rewards.
+ * Staked heroes and items are transferred to this contract.
+ * The heroes are staked in sets with the same hero of different rarity occupying the same set.
+ * 
+ * Encoding of the stake ID is:
+ *   first 160 bits:    staker address
+ *   next 48 bits:      current block number
+ *   next 8 bits:       current index of the passed in staking heroes
+ *   next 32 bits:      some hash
+ *   last 8 bits:       rarity of the staking hero
  */
 contract TaroNFTStaking is UUPSUpgradeable, TwoStageOwnableUpgradeable, PausableUpgradeable,
     ERC1155HolderUpgradeable, TaroNFTMiningPower, TaroNFTStakingRewards {
 
+    using SafeERC20Upgradeable for IERC20Upgradeable;
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.UintSet;
     using ArrayUtils for uint256[];
 
@@ -37,13 +41,25 @@ contract TaroNFTStaking is UUPSUpgradeable, TwoStageOwnableUpgradeable, Pausable
         uint256[] itemTokenIds;
     }
 
-    mapping(uint256 => StakedHero) _stakedHeroes;
-    mapping(address => uint256[]) _playerSetIds;
+    mapping(uint256 => StakedHero) _stakedHeroes; // stake ID to hero structs
+    mapping(address => uint256[]) _playerSetIds;  // player address to set IDs
 
+    /**
+     * Emitted when a player stakes a hero.
+     */
     event HeroStaked(address indexed player, uint256 stakedId, uint256 indexed heroTokenId);
+
+    /**
+     * Emitted when a player unstakes a hero.
+     */
     event HeroUnstaked(address indexed player, uint256 stakedId, uint256 indexed heroTokenId);
 
+    /**
+     * Emitted when a player configures a hero with items.
+     */
     event HeroConfigured(address indexed player, uint256 stakedId, uint256 indexed heroTokenId, uint256[] itemTokenIds);
+
+    event RecoveredERC20(address token, uint256 amount);
 
     function initialize(
         TaroNFT taroNft_,
@@ -64,18 +80,30 @@ contract TaroNFTStaking is UUPSUpgradeable, TwoStageOwnableUpgradeable, Pausable
      */
     function _authorizeUpgrade(address) internal override onlyOwner {}
 
+    /**
+     * Returns the total mining power of all players.
+     */
+    function totalMiningPowerOfAll() external view returns (uint256) {
+        return totalSupply();
+    }
+    
+    /**
+     * Returns the mining power of a player.
+     */
     function miningPowerOf(address player) external view returns (uint256) {
         return balanceOf(player);
     }
 
-    function totalMiningPowerOfAll() external view returns (uint256) {
-        return totalSupply();
-    }
-
+    /**
+     * Returns all the staked set IDs of a player.
+     */
     function stakedSetIdsOf(address player) external view returns (uint256[] memory) {
         return _playerSetIds[player];
     }
 
+    /**
+     * Returns the staked set info.
+     */
     function stakedSet(uint256 setId) external view returns (
         uint256 setMiningPower,
         uint256[] memory stakedIds, StakedHero[] memory stakedHeroes, uint256[] memory heroMiningPowers
@@ -111,6 +139,9 @@ contract TaroNFTStaking is UUPSUpgradeable, TwoStageOwnableUpgradeable, Pausable
             setMiningPower += SET_BONUS_MINING_POWER * ONE_MANTISSA;
     }
 
+    /**
+     * Returns all the staked sets info of a player.
+     */
     function stakedSetsOf(address player) external view returns (
         uint256[] memory setIds, uint256[] memory setMiningPowers,
         uint256[][] memory stakedIds, StakedHero[][] memory stakedHeroes, uint256[][] memory heroMiningPowers
@@ -156,6 +187,9 @@ contract TaroNFTStaking is UUPSUpgradeable, TwoStageOwnableUpgradeable, Pausable
         }
     }
 
+    /**
+     * Returns the staked hero count of a player.
+     */
     function stakedHeroCountOf(address player) public view returns (uint256) {
         uint256[] memory setIds = _playerSetIds[player];
         uint256 setCount = setIds.length;
@@ -174,6 +208,9 @@ contract TaroNFTStaking is UUPSUpgradeable, TwoStageOwnableUpgradeable, Pausable
         return heroCount;
     }
 
+    /**
+     * Returns the staked token (heroes and items) count of a player.
+     */
     function stakedTokenCountOf(address player) public view returns (uint256) {
         uint256[] storage setIds = _playerSetIds[player];
         uint256 setCount = setIds.length;
@@ -193,6 +230,9 @@ contract TaroNFTStaking is UUPSUpgradeable, TwoStageOwnableUpgradeable, Pausable
         return count;
     }
 
+    /**
+     * Returns the staked token IDs of a player.
+     */
     function stakedTokenIdsOf(address player) public view returns(uint256[] memory tokenIds) {
         tokenIds = new uint256[](stakedTokenCountOf(player));
 
@@ -236,7 +276,7 @@ contract TaroNFTStaking is UUPSUpgradeable, TwoStageOwnableUpgradeable, Pausable
         for (uint256 i=0; i<setIds.length; i++) {
             uint256 setId = setIds[i];
             uint256 heroTokenId = heroTokenIds[i];
-            (uint8 nameId, , uint8 rarity, uint8 level) = TaroNFTConstants.decodeHeroId(heroTokenId);    
+            (, uint8 nameId, , uint8 rarity, uint8 level) = TaroNFTConstants.decodeHeroId(heroTokenId);    
 
             // check if hero is valid
             uint256 miningPower = _heroMiningPower(rarity, level);
@@ -263,7 +303,7 @@ contract TaroNFTStaking is UUPSUpgradeable, TwoStageOwnableUpgradeable, Pausable
                     require(address(uint160(setId >> 96)) == msg.sender, "TaroNFTStaking: set belongs to another address");
                 }
 
-                // get the hero current in the set
+                // get the hero name id in the set
                 setHeroNameId = _getSetHeroNameId(setId);
                 if (isNewSet) {
                     require(setHeroNameId == type(uint16).max, "TaroNFTStaking: set already exists");
@@ -295,13 +335,17 @@ contract TaroNFTStaking is UUPSUpgradeable, TwoStageOwnableUpgradeable, Pausable
             emit HeroStaked(msg.sender, stakedId, heroTokenId);
         }
 
-        //TODO: add mining power to staking contract
+        // call base class stake to account for increase in mining power
         _stake(diffMiningPower);
 
         // transfer token last to prevent reentrancy
         _taroNft.safeBatchOneEachTransferFrom(msg.sender, address(this), heroTokenIds, "");
     }
 
+    /**
+     * Returns whether the set has the 4 rarities (common, uncommon, rare, epic)
+     * to give a bonus mining power.
+     */
     function _isFullBonusSet(uint256 setId) private view returns (bool) {
         for (uint8 i=0; i<=TaroNFTConstants.HERO_RARITY_EPIC_ID; i++) {
             if (_stakedHeroes[setId | i].heroTokenId == 0)
@@ -310,17 +354,23 @@ contract TaroNFTStaking is UUPSUpgradeable, TwoStageOwnableUpgradeable, Pausable
         return true;
     }
 
+    /**
+     * Returns the set's hero name ID or uint16 max if no heroes staked in set.
+     */
     function _getSetHeroNameId(uint256 setId) private view returns (uint16) {
         for (uint8 i=0; i<=TaroNFTConstants.HERO_RARITY_LEGENDARY_ID; i++) {
             uint256 heroTokenId = _stakedHeroes[setId | i].heroTokenId;
             if (heroTokenId != 0) {
-                (uint8 nameId, , ,) = TaroNFTConstants.decodeHeroId(heroTokenId);
+                (, uint8 nameId, , ,) = TaroNFTConstants.decodeHeroId(heroTokenId);
                 return nameId;
             }
         }
         return type(uint16).max;
     }
 
+    /**
+     * Unstakes heroes.
+     */
     function unstakeHeroes(uint256[] calldata stakedIds) external whenNotPaused {
         uint256 heroCount = stakedIds.length; 
         require(heroCount > 0, "TaroNFTStaking: must unstake more than zero heroes");
@@ -342,6 +392,8 @@ contract TaroNFTStaking is UUPSUpgradeable, TwoStageOwnableUpgradeable, Pausable
             require(stakedHero.heroTokenId != 0, "TaroNFTStaking: hero is not staked");
 
             uint8 rarity = uint8(stakedId & 0xff);
+
+            // check for set bonus before unstaking
             bool hadFullBonusSet = (rarity <= TaroNFTConstants.HERO_RARITY_EPIC_ID) && _isFullBonusSet(setId);
 
             // remove it
@@ -352,6 +404,8 @@ contract TaroNFTStaking is UUPSUpgradeable, TwoStageOwnableUpgradeable, Pausable
 
             // if there is no more hero left in set, then remove the set too
             if (_getSetHeroNameId(setId) == type(uint16).max) {
+                // since we are using an array to save gas,
+                // we swap the current element with the last, and pop the last
                 (uint256 setIdIndex, ) = playerSetIds.indexOf(setId);
                 uint256 playerSetIdCount = playerSetIds.length;
                 if (setIdIndex != (playerSetIdCount - 1)) {
@@ -369,7 +423,7 @@ contract TaroNFTStaking is UUPSUpgradeable, TwoStageOwnableUpgradeable, Pausable
             emit HeroUnstaked(player, stakedId, stakedHero.heroTokenId);
         }
 
-        //TODO: remove mining power to staking contract
+        // call base class unstake to decrease mining power
         _unstake(diffMiningPower);
 
         // transfer tokens last to prevent reentrancy
@@ -380,6 +434,12 @@ contract TaroNFTStaking is UUPSUpgradeable, TwoStageOwnableUpgradeable, Pausable
         }
     }
 
+    /**
+     * Configures (inlays) a hero with items.
+     * Pass in the whole configuration of the items.
+     * If a previously staked item is missing in the passed-in array,
+     * it would be unstaked.
+     */
     function configStakedHero(
         uint256 stakedId,
         uint256[] calldata newItemTokenIds
@@ -405,7 +465,7 @@ contract TaroNFTStaking is UUPSUpgradeable, TwoStageOwnableUpgradeable, Pausable
         // save it
         stakedHero.itemTokenIds = newItemTokenIds;
 
-        //TODO: change mining power to staking contract
+        // call base class to stake/unstake mining power difference
         if (miningPower > prevMiningPower) {
             uint256 diff = miningPower - prevMiningPower;
             _stake(diff);
@@ -424,20 +484,25 @@ contract TaroNFTStaking is UUPSUpgradeable, TwoStageOwnableUpgradeable, Pausable
             _taroNft.safeBatchOneEachTransferFrom(address(this), player, itemTokenIdsToRemove, "");
     }
 
+    /**
+     * Claims rewards for a player.
+     */
     function claimReward() external whenNotPaused {
         _claimReward();
     }
 
-    function setInitialRewardStrategy(
-        uint256 startBlockNumber,
-        uint256 perBlockReward_,
-        uint256 duration
-    ) external onlyOwner returns (bool succeed) {
-        return _setInitialRewardStrategy(startBlockNumber, perBlockReward_, duration);
+    /**
+     * For owner to set reward.
+     */
+    function setReward(
+        address rewardPool, uint256 rewardAmount, uint256 rewardsDuration_
+    ) external onlyOwner {
+        _setReward(rewardPool, rewardAmount, rewardsDuration_);
     }
 
-    function setRewardStrategy(uint256 perBlockReward_, uint256 duration) external onlyOwner returns (bool succeed) {
-        return _setRewardStrategy(perBlockReward_, duration);
+    function recoverERC20(address tokenAddress, uint256 tokenAmount) external onlyOwner {
+        emit RecoveredERC20(tokenAddress, tokenAmount);
+        IERC20Upgradeable(tokenAddress).safeTransfer(owner, tokenAmount);
     }
 
     /**
@@ -459,5 +524,5 @@ contract TaroNFTStaking is UUPSUpgradeable, TwoStageOwnableUpgradeable, Pausable
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
      */
-    uint256[49] private __gap; //TODO
+    uint256[47] private __gap;
 }

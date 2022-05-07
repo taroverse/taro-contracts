@@ -19,13 +19,17 @@ contract TaroNFTUpgrader is UUPSUpgradeable, TwoStageOwnableUpgradeable, Pausabl
 
     TaroNFT private _taroNft; // the address of the taro nft contract
 
-    // mapping for level to the upgrade requirements for an epic hero 
-    // the encoding is divided into levels, with each level using
-    // 6 bytes (12 hex digits) to represent the number of each rarity requirement and whether needs to be same class
+    /**
+     * mapping for level to the upgrade requirements for an epic hero:
+     * the encoding is divided into levels, with each level using
+     * 6 bytes (12 hex digits) to represent the number of each rarity requirement and whether needs to be same class
+     */
     bytes internal constant EPIC_LEVEL_TO_UPGRADE_REQUIREMENTS = hex"020000000000010100000000010200000000020200000001030000000000020200000000030200000000020201000000030101000001050000000000020300000000040300000000030302000000040202000001060100000000030400000000050400000000040403000000050303000001";
 
-    // mapping for level to the upgrade requirements for a legendary hero
-    // uses same encoding as for epic
+    /**
+     * mapping for level to the upgrade requirements for a legendary hero:
+     * uses same encoding as for epic
+     */
     bytes internal constant LEGENDARY_LEVEL_TO_UPGRADE_REQUIREMENTS = hex"020000000000010100000000010200000000020200000001030000000000020200000000030200000000020201000000030101000001050000000000020300000000040300000000030302000000040202000001060100000000030400000000050400000000040403000000050303010001";
 
     uint8 internal constant ITEM_UPGRADE_REQUIREMENT_COUNT = 4;
@@ -67,7 +71,7 @@ contract TaroNFTUpgrader is UUPSUpgradeable, TwoStageOwnableUpgradeable, Pausabl
      */
     function upgradeHero(uint256 tokenId, uint256[] calldata requirements) external whenNotPaused {
         // get the hero attributes first
-        (uint8 nameId, uint8 classId, uint8 rarity, uint8 level) = TaroNFTConstants.decodeHeroId(tokenId);
+        (uint8 series, uint8 nameId, uint8 classId, uint8 rarity, uint8 level) = TaroNFTConstants.decodeHeroId(tokenId);
         
         // check whether upgradeable
         (bool upgradeable, uint8[] memory rarityRequirements, bool sameClass) = _heroUpgradeRequirements(rarity, level);
@@ -77,7 +81,7 @@ contract TaroNFTUpgrader is UUPSUpgradeable, TwoStageOwnableUpgradeable, Pausabl
 
         // check requirements are exact
         for (uint256 i=0; i<reqCount; i++) {
-            (, uint8 reqClassId, uint8 reqRarity, ) = TaroNFTConstants.decodeHeroId(requirements[i]);
+            (, , uint8 reqClassId, uint8 reqRarity, ) = TaroNFTConstants.decodeHeroId(requirements[i]);
             require(!sameClass || classId == reqClassId, "TaroNFTUpgrader: all heroes must be in the same class");
 
             require(rarityRequirements[reqRarity] > 0, "TaroNFTUpgrader: unnecessary requirement is supplied");
@@ -89,17 +93,15 @@ contract TaroNFTUpgrader is UUPSUpgradeable, TwoStageOwnableUpgradeable, Pausabl
             require(rarityRequirements[i] == 0, "TaroNFTUpgrader: missing requirements");
         }
 
-        address from = msg.sender;
-
-        uint256 upgradedTokenId = TaroNFTConstants.encodeHeroId(nameId, rarity, level + 1);
-        emit HeroUpgraded(from, tokenId, upgradedTokenId);
+        uint256 upgradedTokenId = TaroNFTConstants.encodeHeroId(series, nameId, rarity, level + 1);
+        emit HeroUpgraded(msg.sender, tokenId, upgradedTokenId);
 
         // burn token and requirements
-        _taroNft.burn(from, tokenId, 1);
-        _taroNft.burnBatchOneEach(from, requirements);
+        _taroNft.burn(msg.sender, tokenId, 1);
+        _taroNft.burnBatchOneEach(msg.sender, requirements);
 
         // mint upgraded token
-         _taroNft.mint(from, upgradedTokenId, 1, "");
+         _taroNft.mint(msg.sender, upgradedTokenId, 1, "");
     }
 
     /**
@@ -144,7 +146,7 @@ contract TaroNFTUpgrader is UUPSUpgradeable, TwoStageOwnableUpgradeable, Pausabl
      */
     function heroUpgradeRequirements(uint256 tokenId) external pure
     returns (bool upgradeable, uint8[] memory rarityRequirements, bool sameClass) {
-        (, , uint8 rarity, uint8 level) = TaroNFTConstants.decodeHeroId(tokenId);
+        (, , , uint8 rarity, uint8 level) = TaroNFTConstants.decodeHeroId(tokenId);
         return _heroUpgradeRequirements(rarity, level);
     }
 
@@ -163,7 +165,7 @@ contract TaroNFTUpgrader is UUPSUpgradeable, TwoStageOwnableUpgradeable, Pausabl
         (uint8 classId, uint8 level) = TaroNFTConstants.decodeItemId(tokenId);
         
         // check whether upgradeable
-        require(level > 0 && level <= TaroNFTConstants.ITEM_MAX_LEVEL, "TaroNFTUpgrader: the item is not upgradeable");
+        require(level > 0 && level < TaroNFTConstants.ITEM_MAX_LEVEL, "TaroNFTUpgrader: the item is not upgradeable");
 
         // check requirements are exact
         uint reqCount = requirements.length;
@@ -191,7 +193,7 @@ contract TaroNFTUpgrader is UUPSUpgradeable, TwoStageOwnableUpgradeable, Pausabl
     function itemUpgradeRequirements(uint256 tokenId) external pure
     returns (bool upgradeable, uint8 sameClassLevelRequirementCount) {
         (, uint8 level) = TaroNFTConstants.decodeItemId(tokenId);
-        if (level > 0 && level <= TaroNFTConstants.ITEM_MAX_LEVEL)
+        if (level > 0 && level < TaroNFTConstants.ITEM_MAX_LEVEL)
             return (true, ITEM_UPGRADE_REQUIREMENT_COUNT);
         return (false, 0);
     }

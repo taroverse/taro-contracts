@@ -13,8 +13,6 @@ import "../utils/UniformRandomNumber.sol";
 import "./TaroNFT.sol";
 import "./TaroNFTConstants.sol";
 
-// import "hardhat/console.sol";
-
 /**
  * Contract to unlock and open hero and item NFT chests.
  * Player approves this contract to transfer their TaroNFT tokens first.
@@ -25,7 +23,8 @@ import "./TaroNFTConstants.sol";
  * the player can open the chests for that request.
  * The chests are burned and the new heroes/items are minted and transferred to the player.
  */
-contract TaroChestOpener is UUPSUpgradeable, TwoStageOwnableUpgradeable, PausableUpgradeable,
+contract TaroChestOpener is
+    UUPSUpgradeable, TwoStageOwnableUpgradeable, PausableUpgradeable,
     ERC1155HolderUpgradeable, VRFConsumerBaseV2Upgradeable {
 
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.UintSet;
@@ -149,10 +148,10 @@ contract TaroChestOpener is UUPSUpgradeable, TwoStageOwnableUpgradeable, Pausabl
         // save to player's requests list
         _playerRequests[from].add(requestId);
 
+        emit UnlockChestsRequested(requestId, from, tokenId, count);
+
         // transfer to this contract
         _taroNft.safeTransferFrom(from, address(this), tokenId, count, "");
-
-        emit UnlockChestsRequested(requestId, from, tokenId, count);
     }
 
     /**
@@ -275,7 +274,7 @@ contract TaroChestOpener is UUPSUpgradeable, TwoStageOwnableUpgradeable, Pausabl
             else
                 rarity = 4;
 
-            tokens[i] = TaroNFTConstants.encodeHeroId(nameId, rarity, 1);
+            tokens[i] = TaroNFTConstants.encodeHeroId(0, nameId, rarity, 1);
         }
     }
 

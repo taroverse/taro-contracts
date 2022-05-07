@@ -9,17 +9,24 @@ import "../TaroNFTConstants.sol";
  */
 contract TaroNFTMiningPower is Initializable {
 
+    /**
+     * Common, uncommon, and rare heroes are not upgradeable and have fixed mining power.
+     */
     uint256 internal constant COMMON_MINING_POWER = 1;
     uint256 internal constant UNCOMMON_MINING_POWER = 2;
     uint256 internal constant RARE_MINING_POWER = 5;
 
-    // mapping for level to mining power for an epic hero 
-    // the encoding is divided into levels, with each level using
-    // 2 bytes (4 hex digits) to represent the mining power
+    /**
+     * mapping for level to mining power for an epic hero:
+     * the encoding is divided into levels, with each level using
+     * 2 bytes (4 hex digits) to represent the mining power
+     */
     bytes internal constant EPIC_LEVEL_TO_MINING_POWER = hex"000a001e00320046005e00720086009a00ae00ca00de00f20106011a013a014e01620176019401b8";
 
-    // mapping for level to the mining power for a legendary hero
-    // uses same encoding as for epic
+    /**
+     * mapping for level to the mining power for a legendary hero:
+     * uses same encoding as for epic
+     */
     bytes internal constant LEGENDARY_LEVEL_TO_MINING_POWER = hex"00320064009600c80109013b016d019f01d102210253028502b702e90348037a03ac03de0410047e";
 
     uint256 internal constant ITEM_BOOST_PER_LEVEL = 5;
@@ -63,8 +70,10 @@ contract TaroNFTMiningPower is Initializable {
             }
 
             if (levelIndex < bytesArray.length)
-                return (uint256(uint8(bytesArray[levelIndex])) * 0x100 + uint8(bytesArray[levelIndex+1]))
-                    * ONE_MANTISSA;
+                return (
+                    uint256(uint8(bytesArray[levelIndex])) * 0x100
+                    +       uint8(bytesArray[levelIndex+1])
+                ) * ONE_MANTISSA;
         }
         
         return 0;
@@ -77,7 +86,7 @@ contract TaroNFTMiningPower is Initializable {
      * @return miningPower the mining power with 18 decimal places
      */
     function heroMiningPower(uint256 tokenId) public pure returns (uint256 miningPower) {
-        (, , uint8 rarity, uint8 level) = TaroNFTConstants.decodeHeroId(tokenId);
+        (, , , uint8 rarity, uint8 level) = TaroNFTConstants.decodeHeroId(tokenId);
         return _heroMiningPower(rarity, level);
     }
 

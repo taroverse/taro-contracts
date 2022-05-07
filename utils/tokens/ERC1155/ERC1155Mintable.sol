@@ -6,6 +6,9 @@ import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 import "@openzeppelin/contracts/utils/Context.sol";
 import "./IERC1155Mintable.sol";
 
+/**
+ * @dev Extension of ERC1155 that allows addresses with the minter role to mint tokens.
+ */
 contract ERC1155Mintable is Context, AccessControlEnumerable, ERC1155, IERC1155Mintable {
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
 

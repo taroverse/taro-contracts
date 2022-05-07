@@ -6,12 +6,28 @@ import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Supply.sol";
 import "../utils/tokens/ERC1155/ERC1155Mintable.sol";
 import "../utils/tokens/ERC1155/ERC1155HolderTokens.sol";
 
+/**
+ * Taro NFT tokens based of ERC1155.
+ *   - Allows addresses with minter roles to mint tokens.
+ *   - Allows token holder and addresses with approval to burn tokens.
+ *   - Keeps track of each token's supply.
+ *   - Keeps track of each holder's tokens and their balances.
+ */
 contract TaroNFT is ERC1155Mintable, ERC1155Burnable, ERC1155HolderTokens, ERC1155Supply {
+    /**
+     * Emitted when the URI changes.
+     */
     event URISet(string newuri);
 
+    /**
+     * Constructor with the URI.
+     */
     constructor(string memory uri) ERC1155Mintable(uri) {
     }
 
+    /**
+     * Only the admin can change the URI.
+     */
     function setURI(string memory newuri) public onlyRole(DEFAULT_ADMIN_ROLE) {
         _setURI(newuri);
         emit URISet(newuri);
@@ -73,11 +89,6 @@ contract TaroNFT is ERC1155Mintable, ERC1155Burnable, ERC1155HolderTokens, ERC11
         burnBatch(account, ids, amounts);
     }
 
-    /**
-     * Requirements:
-     * - TODO: it can only be transferred to our own marketplace
-     * implement bannable?
-     */
     function _beforeTokenTransfer(
         address operator,
         address from,
@@ -87,8 +98,6 @@ contract TaroNFT is ERC1155Mintable, ERC1155Burnable, ERC1155HolderTokens, ERC11
         bytes memory data
     ) internal virtual override (ERC1155, ERC1155HolderTokens, ERC1155Supply) {
         super._beforeTokenTransfer(operator, from, to, ids, amounts, data);
-        
-        // require(!checkOwnMarketplace(), "TaroNFT: token transfer to another marketplace");
     }
 
     function _afterTokenTransfer(
