@@ -6,11 +6,12 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeab
 import "@openzeppelin/contracts-upgradeable/token/ERC1155/utils/ERC1155HolderUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 import "./NoLossLotteryLogic.sol";
+import "./INoLossLotteryERC1155.sol";
 
 /**
  * No loss lottery for awarding ERC1155 tokens.
  */
-abstract contract NoLossLotteryERC1155 is NoLossLotteryLogic, ERC1155HolderUpgradeable {
+abstract contract NoLossLotteryERC1155 is NoLossLotteryLogic, ERC1155HolderUpgradeable, INoLossLotteryERC1155 {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     IERC1155 internal _awardToken;
@@ -60,15 +61,15 @@ abstract contract NoLossLotteryERC1155 is NoLossLotteryLogic, ERC1155HolderUpgra
         _awardsPerTicket = 0;
     }
 
-    function awardToken() public view returns (IERC1155) {
+    function awardToken() public view override returns (IERC1155) {
         return _awardToken;
     }
 
-    function awardTokenId() public view returns (uint256) {
+    function awardTokenId() public view override returns (uint256) {
         return _awardTokenId;
     }
 
-    function awardsPerTicket() public view returns (uint256) {
+    function awardsPerTicket() public view override returns (uint256) {
         return _awardsPerTicket;
     }
 

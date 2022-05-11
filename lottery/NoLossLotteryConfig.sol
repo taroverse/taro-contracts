@@ -106,7 +106,7 @@ abstract contract NoLossLotteryConfig is TwoStageOwnableUpgradeable, NoLossLotte
         return _name;
     }
 
-    function endTime() public view returns (uint256) {
+    function endTime() public view override returns (uint256) {
         return _endTime;
     }
 

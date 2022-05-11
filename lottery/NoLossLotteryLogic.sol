@@ -352,6 +352,7 @@ abstract contract NoLossLotteryLogic is UUPSUpgradeable, NoLossLotteryConfig, Pa
         require(winningTicketCount > 0, "NoLossLotteryLogic: Player has no winning tickets");
 
         _playerClaims[player] = true;
+        _ticketsClaimed += winningTicketCount;
         
         _award(player, winningTicketCount);
 

@@ -34,6 +34,8 @@ interface INoLossLottery {
 
     function name() external view returns (string memory);
 
+    function endTime() external view returns (uint256);
+
     /**
      * State of the lottery.
      */
@@ -43,6 +45,11 @@ interface INoLossLottery {
      * The payment token.
      */
     function paymentToken() external view returns (IERC20Upgradeable);
+
+    /**
+     * The number of tickets sold.
+     */
+    function ticketCount() external view returns (uint256);
 
     /**
      * Player buys a specific number of tickets.
@@ -69,6 +76,11 @@ interface INoLossLottery {
      * Number of non-winning tickets the player has.
      */
     function nonwinningTicketCountOf(address player) external view returns (uint256);
+
+    /**
+     * The number of winning tickets claimed so far.
+     */
+    function ticketsClaimedCount() external view returns (uint256);
 
     /**
      * Whether the player can claim any winning tickets.

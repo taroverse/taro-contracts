@@ -35,7 +35,7 @@ library TaroNFTConstants {
     uint256 internal constant ITEMS_FIRST_ID = 0x0100000000;
     uint256 internal constant ITEMS_LAST_ID =  0xff00000000;
 
-    uint256 internal constant HEROES_NAME_COUNT = 59;
+    uint256 internal constant HEROES_NAME_COUNT = 60;
 
     /**
      * Name ID to class ID mapping:
@@ -43,7 +43,7 @@ library TaroNFTConstants {
      * every byte (2 hex digits) is a different name ID.
      * the value of the byte is the class ID: 0 (Assassin), 1 (Diviner), 2 (Guardian), 3 (Mage), 4 (Sniper), 5 (Warrior)
      */
-    bytes internal constant NAME_IDS_2_CLASS_IDS = hex"0000000000000001010101010101010102020202020202020202030303030303030303030304040404050505050505050505050505050505050505";
+    bytes internal constant NAME_IDS_2_CLASS_IDS = hex"000000000000000001010101010101010102020202020202020202030303030303030303030304040404050505050505050505050505050505050505";
 
     uint256 internal constant HERO_RARITY_COUNT = 5;
     uint8 internal constant HERO_RARITY_COMMON_ID    = 0;

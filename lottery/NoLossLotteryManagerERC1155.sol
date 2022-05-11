@@ -6,7 +6,7 @@ import "@openzeppelin/contracts-upgradeable/access/AccessControlEnumerableUpgrad
 import "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "../utils/tokens/ERC1155/IERC1155Mintable.sol";
-import "./INoLossLottery.sol";
+import "./INoLossLotteryERC1155.sol";
 
 /**
  * Manager keeps a list of past lotteries.
@@ -109,8 +109,49 @@ contract NoLossLotteryManagerERC1155 is UUPSUpgradeable, AccessControlEnumerable
         names = new string[](lotteryCount);
         
         for (uint256 i=0; i<lotteryCount; i++) {
-            INoLossLottery iLottery = INoLossLottery(lotteries[i]);
+            INoLossLotteryERC1155 iLottery = INoLossLotteryERC1155(lotteries[i]);
             names[i] = iLottery.name();
+        }
+    }
+
+    /**
+     * Convenience method to get all lotteries and their info.
+     */
+    function lotteriesAndInfo() external view returns (
+        address[] memory lotteries, string[] memory names,
+        INoLossLotteryERC1155.LotteryState[] memory states,
+        uint256[] memory endTimes,
+        uint256[] memory awardTokenIds
+    ) {
+        lotteries = _lotteries.values();
+        uint256 lotteryCount = lotteries.length;
+        names = new string[](lotteryCount);
+        states = new INoLossLotteryERC1155.LotteryState[](lotteryCount);
+        endTimes = new uint256[](lotteryCount);
+        awardTokenIds = new uint256[](lotteryCount);
+        
+        for (uint256 i=0; i<lotteryCount; i++) {
+            INoLossLotteryERC1155 iLottery = INoLossLotteryERC1155(lotteries[i]);
+            names[i] = iLottery.name();
+            states[i] = iLottery.state();
+            endTimes[i] = iLottery.endTime();
+            awardTokenIds[i] = iLottery.awardTokenId();
+        }
+    }
+
+    /**
+     * Convenience method to get total stats info.
+     */
+    function totalStats() external view returns (uint256 ticketsSold, uint256 ticketsClaimed) {
+        address[] memory lotteries = _lotteries.values();
+        uint256 lotteryCount = lotteries.length;
+        ticketsSold = 0;
+        ticketsClaimed = 0;
+
+        for (uint256 i=0; i<lotteryCount; i++) {
+            INoLossLotteryERC1155 iLottery = INoLossLotteryERC1155(lotteries[i]);
+            ticketsSold += iLottery.ticketCount();
+            ticketsClaimed += iLottery.ticketsClaimedCount();
         }
     }
 
@@ -136,7 +177,7 @@ contract NoLossLotteryManagerERC1155 is UUPSUpgradeable, AccessControlEnumerable
         ticketsRefunded = new bool[](lotteryCount);
 
         for (uint256 i=0; i<lotteryCount; i++) {
-            INoLossLottery iLottery = INoLossLottery(lotteries[i]);
+            INoLossLotteryERC1155 iLottery = INoLossLotteryERC1155(lotteries[i]);
             ticketsBought[i] = iLottery.ticketCountOf(player);
             winningTickets[i] = iLottery.winningTicketCountOf(player);
             ticketsClaimed[i] = iLottery.ticketsClaimed(player);
@@ -157,7 +198,7 @@ contract NoLossLotteryManagerERC1155 is UUPSUpgradeable, AccessControlEnumerable
 
         require(_lotteries.contains(lottery), "NoLossLotteryManagerERC1155: Lottery must be in list");
 
-        INoLossLottery iLottery = INoLossLottery(lottery);
+        INoLossLotteryERC1155 iLottery = INoLossLotteryERC1155(lottery);
         uint256 paymentAmount = iLottery.buyTicketsFor(player, count);
 
         // get payment
@@ -179,7 +220,7 @@ contract NoLossLotteryManagerERC1155 is UUPSUpgradeable, AccessControlEnumerable
         uint256[] memory ticketsClaimed = new uint256[](lotteryCount);
 
         for (uint256 i=0; i<lotteryCount; i++) {
-            INoLossLottery iLottery = INoLossLottery(lotteries[i]);
+            INoLossLotteryERC1155 iLottery = INoLossLotteryERC1155(lotteries[i]);
             if (iLottery.canClaimTickets(player))
                 ticketsClaimed[i] = iLottery.claimTicketsFor(player);
         }
@@ -202,7 +243,7 @@ contract NoLossLotteryManagerERC1155 is UUPSUpgradeable, AccessControlEnumerable
         uint256[] memory ticketsRefunded = new uint256[](lotteryCount);
 
         for (uint256 i=0; i<lotteryCount; i++) {
-            INoLossLottery iLottery = INoLossLottery(lotteries[i]);
+            INoLossLotteryERC1155 iLottery = INoLossLotteryERC1155(lotteries[i]);
             if (iLottery.canRefundTickets(player))
                 ticketsRefunded[i] = iLottery.refundTicketsFor(player);
         }

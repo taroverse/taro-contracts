@@ -11,14 +11,13 @@ import "./INoLossLottery.sol";
 abstract contract NoLossLotteryStorage is Initializable, INoLossLottery {
     LotteryState internal _state; // state of the lottery
 
-    // address[] internal _players; // player addresses
-
     uint256 internal _ticketCount; // total number of tickets sold
     mapping(address => uint256) internal _playerTicketCounts; // player address to ticket count
 
     mapping(address => bool) internal _playerClaims; // player address to whether they have claimed their winning tickets
     mapping(address => bool) internal _playerRefunds; // player address to whether they have refunded their non-winning tickets
 
+    uint256 internal _ticketsClaimed; // the total number of winning tickets claimed so far
 
     function __NoLossLotteryStorage_init() internal onlyInitializing {
         __NoLossLotteryStorage_init_unchained();
@@ -26,6 +25,7 @@ abstract contract NoLossLotteryStorage is Initializable, INoLossLottery {
 
     function __NoLossLotteryStorage_init_unchained() internal onlyInitializing {
         _ticketCount = 0;
+        _ticketsClaimed = 0;
         _setState(LotteryState.CREATED);
     }
     
@@ -38,26 +38,22 @@ abstract contract NoLossLotteryStorage is Initializable, INoLossLottery {
         emit StateChanged(_state);
     }
 
-    function ticketCount() public view returns (uint256) {
+    function ticketCount() public view override returns (uint256) {
         return _ticketCount;
     }
 
-    // function playerCount() public view returns (uint256) {
-    //     return _players.length;
-    // }
-
     function ticketCountOf(address player) public view override returns (uint256) {
         return _playerTicketCounts[player];
+    }
+
+    function ticketsClaimedCount() public view override returns (uint256) {
+        return _ticketsClaimed;
     }
 
     /**
      * @dev Mints a specific number of tickets for a player.
      */
     function _mintTickets(address player, uint256 count) internal {
-        // // add address of player to list if the player has no tickets before
-        // if (_playerTicketCounts[player] == 0)
-        //     _players.push(player);
-
         _playerTicketCounts[player] += count;
         _ticketCount += count;
     }
@@ -67,5 +63,5 @@ abstract contract NoLossLotteryStorage is Initializable, INoLossLottery {
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
      */
-    uint256[45] private __gap;
+    uint256[44] private __gap;
 }
